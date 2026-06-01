@@ -1,13 +1,13 @@
 # Werewolves
 
-Werewolves is a backend-only Java project for building a multi-agent Werewolf game.
+Werewolves 是一个后端专用的 Java 项目，用于开发多 agent 狼人杀游戏。
 
-The goal of this repository is to model the core game loop, player roles, agent decision making, and server-side orchestration without any frontend implementation.
+本仓库聚焦狼人杀游戏的核心服务端实现，包括游戏流程、角色能力、发言与投票阶段、agent 决策，以及多 agent 之间的状态编排。项目不包含前端实现，主要用于沉淀可扩展、可测试的后端游戏逻辑。
 
-## Planned Scope
+## 计划范围
 
-- Java backend implementation
-- Multi-agent game logic
-- Werewolf role and phase management
-- Server-side state handling and orchestration
-
+- Java 后端实现
+- 多 agent 狼人杀游戏逻辑
+- 角色、阵营与阶段管理
+- 发言、投票、夜晚行动等核心流程
+- 服务端状态管理与 agent 调度编排
