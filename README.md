@@ -70,11 +70,15 @@ git clone https://github.com/pieceHk/multiagent-werewolf.git
 cd multiagent-werewolf
 ```
 
-### 2. 配置工具链（macOS / Homebrew 示例）
+### 2. 配置工具链
 
 ```bash
-export JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home
-export PATH="$JAVA_HOME/bin:/opt/homebrew/bin:$PATH"
+# JAVA_HOME 指向你本机的 JDK 17 安装目录
+export JAVA_HOME=/path/to/your/jdk-17
+export PATH="$JAVA_HOME/bin:$PATH"
+
+# 例：macOS + Homebrew 安装的 openjdk@17
+# export JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home
 ```
 
 ### 3. 构建
