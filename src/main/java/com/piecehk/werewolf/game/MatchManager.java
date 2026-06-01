@@ -18,6 +18,7 @@ import com.piecehk.werewolf.core.statemachine.GameStateMachine;
 import com.piecehk.werewolf.game.player.LLMPlayerController;
 import com.piecehk.werewolf.game.player.PlayerController;
 import com.piecehk.werewolf.infra.output.MatchWorkspace;
+import com.piecehk.werewolf.infra.output.MatchSnapshotWriter;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -33,6 +34,8 @@ public final class MatchManager {
         Game game = GameFactory.standardNine(null, effectiveSeed, RuleConfig.defaults());
         MatchWorkspace workspace = MatchWorkspace.create(outputDir, game.matchId());
         AgentJournal journal = new AgentJournal();
+        MatchSnapshotWriter snapshotWriter = new MatchSnapshotWriter();
+        game.onEvent(changedGame -> snapshotWriter.write(changedGame, journal, workspace, null));
         ExecutorService executor = Executors.newFixedThreadPool(6);
         try {
             Map<Integer, PlayerController> controllers = new HashMap<>();

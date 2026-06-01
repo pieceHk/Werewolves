@@ -48,6 +48,13 @@ replay.json       结构化事件回放
 meta.json         seed、座位身份、胜利阵营等元信息
 ```
 
+对局运行时会持续刷新这些文件。另开一个终端可以实时查看最新一局上帝视角：
+
+```bash
+cd /Users/ahiuy/myproject/Werewolves
+tail -f "$(ls -td matches/match-* | head -1)/god-view.md"
+```
+
 ## 使用 Qwen
 
 真实 Qwen 调用通过 DashScope OpenAI 兼容接口完成。API Key 不写入仓库，请在本机环境变量中设置：

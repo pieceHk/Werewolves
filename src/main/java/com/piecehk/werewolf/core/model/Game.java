@@ -7,6 +7,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
+import java.util.function.Consumer;
 
 public final class Game {
     private final String matchId;
@@ -18,6 +19,7 @@ public final class Game {
     private final List<GameEvent> eventLog = new ArrayList<>();
     private final long randomSeed;
     private final Random random;
+    private Consumer<Game> eventListener;
 
     public Game(String matchId, List<Player> players, RuleConfig ruleConfig, long randomSeed) {
         this.matchId = matchId;
@@ -85,6 +87,9 @@ public final class Game {
 
     public void addEvent(GameEvent event) {
         eventLog.add(event);
+        if (eventListener != null) {
+            eventListener.accept(this);
+        }
     }
 
     public long randomSeed() {
@@ -93,5 +98,9 @@ public final class Game {
 
     public Random random() {
         return random;
+    }
+
+    public void onEvent(Consumer<Game> eventListener) {
+        this.eventListener = eventListener;
     }
 }

@@ -60,3 +60,14 @@
 - 使用 mock LLM 执行 `java -jar target/multiagent-werewolf.jar --seed 12345 --rounds-cap 8 --out ./matches`，成功生成对局目录 `matches/match-20260601-191029-39523a60`。
 - 对输出目录检查确认包含 `god-view.md`、`human-view.md`、`agents/seat-1.md` 至 `agents/seat-9.md`、`replay.json` 与 `meta.json`。
 - 对最新对局日志执行关键字检查，未发现“非法目标”“解析失败”“系统备注”等异常降级记录。
+
+## M7 — 真实 Qwen 容错与实时日志
+
+- 修复真实 Qwen 输出非法女巫动作时整局中断的问题：夜晚动作在进入 `NightResolver` 前会先净化，女巫二夜及以后自救、无刀口救人、同晚双药、药品不可用、无效目标等情况会被降级并写入私有系统备注。
+- 增加 `MatchSnapshotWriter`，每次 `Game.addEvent` 后刷新 `god-view.md`、玩家私有日志、`replay.json` 与 `meta.json`，对局运行中也能查看最新进展。
+- `meta.json` 增加 `phase` 字段，用于判断当前对局阶段或是否结束。
+- `AgentJournal` 增加同步保护，避免并发投票阶段写记忆时与实时快照读取冲突。
+- `README.md` 增加 `tail -f "$(ls -td matches/match-* | head -1)/god-view.md"` 的实时查看方式。
+- 执行 `mvn test`，共 15 个测试通过。
+- 执行 `mvn clean package`，成功重新生成 `target/multiagent-werewolf.jar`。
+- 使用 mock LLM 再次执行整局，对局目录 `matches/match-20260601-194655-13dc069c` 成功生成，未发现“非法目标”“解析失败”等异常降级记录。

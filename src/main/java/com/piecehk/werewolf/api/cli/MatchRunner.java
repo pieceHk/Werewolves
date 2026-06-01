@@ -5,9 +5,7 @@ import com.piecehk.werewolf.agent.llm.MockLLMClient;
 import com.piecehk.werewolf.agent.llm.QwenLLMClient;
 import com.piecehk.werewolf.game.MatchManager;
 import com.piecehk.werewolf.game.MatchResult;
-import com.piecehk.werewolf.infra.output.AgentJournalWriter;
-import com.piecehk.werewolf.infra.output.GodViewLogWriter;
-import com.piecehk.werewolf.infra.output.ReplayWriter;
+import com.piecehk.werewolf.infra.output.MatchSnapshotWriter;
 
 import java.nio.file.Path;
 import java.time.Duration;
@@ -32,11 +30,7 @@ public final class MatchRunner {
                 : MockLLMClient.deterministic();
 
         MatchResult result = new MatchManager().runSingleMatch(seed, roundsCap, out, client);
-        new GodViewLogWriter().write(result.game(), result.workspace());
-        new AgentJournalWriter().write(result.game(), result.journal(), result.workspace());
-        ReplayWriter replayWriter = new ReplayWriter();
-        replayWriter.write(result.game(), result.journal(), result.workspace(), result.winner());
-        replayWriter.writeMeta(result.game(), result.workspace(), result.winner());
+        new MatchSnapshotWriter().write(result.game(), result.journal(), result.workspace(), result.winner());
 
         System.out.println("matchId=" + result.game().matchId());
         System.out.println("winner=" + result.winner());

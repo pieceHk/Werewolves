@@ -11,6 +11,7 @@ import com.piecehk.werewolf.core.model.GamePhase;
 import com.piecehk.werewolf.core.model.NightActions;
 import com.piecehk.werewolf.core.model.Player;
 import com.piecehk.werewolf.core.model.RoleType;
+import com.piecehk.werewolf.core.model.WitchSelfSaveRule;
 import com.piecehk.werewolf.core.rule.NightOutcome;
 import com.piecehk.werewolf.core.rule.NightResolver;
 import com.piecehk.werewolf.core.rule.VoteOutcome;
@@ -48,7 +49,7 @@ public final class PhaseScheduler {
             stateMachine.transition(game, GamePhase.NIGHT);
         }
 
-        NightActions actions = orchestrator.collectNightActions(game);
+        NightActions actions = sanitizeNightActions(game, orchestrator.collectNightActions(game));
         NightOutcome nightOutcome = nightResolver.resolve(game, actions);
         recordPrivateNightEvents(game, actions);
         applyNightOutcome(game, nightOutcome);
@@ -111,6 +112,75 @@ public final class PhaseScheduler {
                     "今晚被刀：" + actions.wolfTarget()
                             + "；解药=" + actions.witchSave()
                             + "；毒药目标=" + actions.witchPoison()));
+        }
+    }
+
+    private NightActions sanitizeNightActions(Game game, NightActions actions) {
+        Integer wolfTarget = validAliveTarget(game, actions.wolfTarget()) ? actions.wolfTarget() : null;
+        Integer seerTarget = validAliveTarget(game, actions.seerTarget()) ? actions.seerTarget() : null;
+        boolean witchSave = actions.witchSave();
+        Integer witchPoison = validAliveTarget(game, actions.witchPoison()) ? actions.witchPoison() : null;
+
+        if (actions.wolfTarget() != null && wolfTarget == null) {
+            game.addEvent(BasicGameEvent.publicEvent(EventType.SYSTEM_NOTE, game.roundNo(), GamePhase.NIGHT,
+                    null, null, "动作降级", "狼人击杀目标无效，已改为无人被刀"));
+        }
+        if (actions.seerTarget() != null && seerTarget == null) {
+            seerSystemNote(game, "预言家查验目标无效，已忽略");
+        }
+        if (actions.witchPoison() != null && witchPoison == null) {
+            witchSystemNote(game, "女巫毒药目标无效，已忽略");
+        }
+        if (witchSave && wolfTarget == null) {
+            witchSystemNote(game, "女巫选择救人但今晚没有有效刀口，已忽略解药");
+            witchSave = false;
+        }
+        if (witchSave && !game.witchState().antidoteAvailable()) {
+            witchSystemNote(game, "女巫解药已不可用，已忽略解药");
+            witchSave = false;
+        }
+        if (witchPoison != null && !game.witchState().poisonAvailable()) {
+            witchSystemNote(game, "女巫毒药已不可用，已忽略毒药");
+            witchPoison = null;
+        }
+        if (witchSave && witchPoison != null && !game.ruleConfig().witchBothPotionsSameNight()) {
+            witchSystemNote(game, "女巫同晚不能同时使用解药和毒药，已保留解药并忽略毒药");
+            witchPoison = null;
+        }
+        if (witchSave && wolfTarget != null && isForbiddenWitchSelfSave(game, wolfTarget)) {
+            witchSystemNote(game, "女巫本轮不能自救，已忽略解药");
+            witchSave = false;
+        }
+        return new NightActions(wolfTarget, seerTarget, witchSave, witchPoison);
+    }
+
+    private boolean validAliveTarget(Game game, Integer target) {
+        return target == null || game.playerBySeat(target).map(Player::isAlive).orElse(false);
+    }
+
+    private boolean isForbiddenWitchSelfSave(Game game, Integer wolfTarget) {
+        Player witch = game.playersByRole(RoleType.WITCH).stream().findFirst().orElse(null);
+        if (witch == null || witch.seatNo() != wolfTarget) {
+            return false;
+        }
+        WitchSelfSaveRule rule = game.ruleConfig().witchSelfSave();
+        return rule != WitchSelfSaveRule.ALWAYS
+                && (rule != WitchSelfSaveRule.FIRST_NIGHT_ONLY || game.roundNo() != 1);
+    }
+
+    private void seerSystemNote(Game game, String text) {
+        Player seer = game.playersByRole(RoleType.SEER).stream().findFirst().orElse(null);
+        if (seer != null) {
+            game.addEvent(BasicGameEvent.privateEvent(EventType.SYSTEM_NOTE, Set.of(seer.seatNo()),
+                    game.roundNo(), GamePhase.NIGHT, null, null, "动作降级", text));
+        }
+    }
+
+    private void witchSystemNote(Game game, String text) {
+        Player witch = game.playersByRole(RoleType.WITCH).stream().findFirst().orElse(null);
+        if (witch != null) {
+            game.addEvent(BasicGameEvent.privateEvent(EventType.SYSTEM_NOTE, Set.of(witch.seatNo()),
+                    game.roundNo(), GamePhase.NIGHT, null, null, "动作降级", text));
         }
     }
 
