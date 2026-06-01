@@ -33,6 +33,11 @@ src/test/java/  单元测试与集成测试
 需要 Java 17 和 Maven。
 
 ```bash
+cd /Users/ahiuy/myproject/Werewolves
+
+export JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home
+export PATH="$JAVA_HOME/bin:/opt/homebrew/bin:$PATH"
+
 mvn test
 mvn clean package
 java -jar target/multiagent-werewolf.jar --seed 12345 --rounds-cap 8 --out ./matches
@@ -60,8 +65,13 @@ tail -f "$(ls -td matches/match-* | head -1)/god-view.md"
 真实 Qwen 调用通过 DashScope OpenAI 兼容接口完成。API Key 不写入仓库，请在本机环境变量中设置：
 
 ```bash
+cd /Users/ahiuy/myproject/Werewolves
+
+export JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home
+export PATH="$JAVA_HOME/bin:/opt/homebrew/bin:$PATH"
 export DASHSCOPE_API_KEY="你的 DashScope API Key"
-java -jar target/multiagent-werewolf.jar --llm qwen --seed 12345 --out ./matches
+
+java -jar target/multiagent-werewolf.jar --llm qwen --seed 12345 --rounds-cap 8 --out ./matches
 ```
 
 ## 开发记录
