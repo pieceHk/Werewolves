@@ -4,7 +4,7 @@
 [![Maven](https://img.shields.io/badge/build-Maven-blue.svg)](https://maven.apache.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![LLM: Qwen](https://img.shields.io/badge/LLM-Qwen%2FDashScope-green.svg)](https://dashscope.aliyun.com/)
-[![Tests](https://img.shields.io/badge/tests-18%20passing-brightgreen.svg)](#测试与构建)
+[![Tests](https://img.shields.io/badge/tests-19%20passing-brightgreen.svg)](#测试与构建)
 
 一个**后端专用**的 Java 多 Agent 狼人杀游戏引擎。每名玩家由一个独立的 LLM Agent 驱动，自动完成一场完整的 **9 人「预女猎」标准局**对局：夜晚行动、警长竞选、白天发言、投票放逐、胜负判定，全程使用中文交互与日志。
 
@@ -70,17 +70,21 @@ git clone https://github.com/pieceHk/multiagent-werewolf.git
 cd multiagent-werewolf
 ```
 
-### 2. 配置工具链（macOS / Homebrew 示例）
+### 2. 配置工具链
 
 ```bash
-export JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home
-export PATH="$JAVA_HOME/bin:/opt/homebrew/bin:$PATH"
+# JAVA_HOME 指向你本机的 JDK 17 安装目录
+export JAVA_HOME=/path/to/your/jdk-17
+export PATH="$JAVA_HOME/bin:$PATH"
+
+# 例：macOS + Homebrew 安装的 openjdk@17
+# export JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home
 ```
 
 ### 3. 构建
 
 ```bash
-mvn test          # 运行全部单元/集成测试（18 个）
+mvn test          # 运行全部单元/集成测试（19 个）
 mvn clean package # 生成可运行 shaded jar：target/multiagent-werewolf.jar
 ```
 
@@ -273,7 +277,7 @@ multiagent-werewolf/
 ## 🧪 测试与构建
 
 ```bash
-mvn test          # 18 个测试：状态机流转、夜晚结算、平票裁决、胜负判定、
+mvn test          # 19 个测试：状态机流转、夜晚结算、平票裁决、胜负判定、
                   #            女巫硬规则、警长票权、动作解析、信息隔离、prompt 规则前置、整局集成
 mvn clean package # 生成 target/multiagent-werewolf.jar（shaded，含全部依赖）
 ```
