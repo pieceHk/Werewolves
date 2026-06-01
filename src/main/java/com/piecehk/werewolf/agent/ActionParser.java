@@ -18,6 +18,8 @@ import com.piecehk.werewolf.agent.action.WolfKillAction;
 import com.piecehk.werewolf.core.model.SpeechOrder;
 
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public final class ActionParser {
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -30,7 +32,18 @@ public final class ActionParser {
             JsonNode actionNode = root.path("action");
             ActionType type = parseType(actionNode.path("type").asText(fallbackType.name()), fallbackType);
             ParseResult result = toAction(type, actionNode, validTargets, maxSpeechChars);
-            return new ParsedAction(reasoning, result.action(), result.warning());
+            AgentAction action = result.action();
+            String warning = result.warning();
+            // 真实 LLM 常常把目标只写进 reasoning（如“刀4号”“查1号”），却漏填 targetSeat。
+            // 这里在目标为空时从思考文本中按“动作动词+座位号”回填，避免误判为空刀/弃验。
+            if (canSalvageTarget(type) && nullTarget(action)) {
+                Integer recovered = recoverTargetFromReasoning(reasoning, type, validTargets);
+                if (recovered != null) {
+                    action = withTarget(type, recovered);
+                    warning = "目标字段缺失，已据思考回填座位" + recovered;
+                }
+            }
+            return new ParsedAction(reasoning, action, warning);
         } catch (Exception e) {
             return new ParsedAction("", fallbackAction(fallbackType), "解析失败，已降级为安全动作");
         }
@@ -67,6 +80,67 @@ public final class ActionParser {
 
     private boolean requiresTarget(ActionType type) {
         return type == ActionType.WOLF_KILL || type == ActionType.SEER_CHECK || type == ActionType.HUNTER_SHOOT;
+    }
+
+    private boolean canSalvageTarget(ActionType type) {
+        return type == ActionType.WOLF_KILL || type == ActionType.SEER_CHECK
+                || type == ActionType.HUNTER_SHOOT || type == ActionType.VOTE;
+    }
+
+    private boolean nullTarget(AgentAction action) {
+        if (action instanceof WolfKillAction a) return a.targetSeat() == null;
+        if (action instanceof SeerCheckAction a) return a.targetSeat() == null;
+        if (action instanceof HunterShootAction a) return a.targetSeat() == null;
+        if (action instanceof VoteAction a) return a.targetSeat() == null;
+        return false;
+    }
+
+    private AgentAction withTarget(ActionType type, int seat) {
+        return switch (type) {
+            case WOLF_KILL -> new WolfKillAction(seat);
+            case SEER_CHECK -> new SeerCheckAction(seat);
+            case HUNTER_SHOOT -> new HunterShootAction(seat);
+            case VOTE -> new VoteAction(seat);
+            default -> new NoOpAction();
+        };
+    }
+
+    // 仅在“动作动词紧跟座位号”时回填，避免把 reasoning 里的“避免动1、2、5、7位”等无关座位误当成目标。
+    private Integer recoverTargetFromReasoning(String reasoning, ActionType type, Set<Integer> validTargets) {
+        if (reasoning == null || reasoning.isBlank() || validTargets == null || validTargets.isEmpty()) {
+            return null;
+        }
+        String verbs = switch (type) {
+            case WOLF_KILL -> "刀掉|刀杀|出刀|击杀|杀掉|宰|刀|砍|杀|带走|选|锁定|针对|目标定?在?";
+            case SEER_CHECK -> "查验|验人|查|验|看一?下?|选|锁定|针对|目标定?在?";
+            case HUNTER_SHOOT -> "开枪带走|带走|射杀|开枪|射|枪|杀|选|锁定|针对|目标定?在?";
+            case VOTE -> "投票给|改投|投给|投|放逐|票|选|锁定|针对|目标定?在?";
+            default -> null;
+        };
+        if (verbs == null) {
+            return null;
+        }
+        Pattern pattern = Pattern.compile("(?:" + verbs + ")\\s*第?\\s*([1-9]|[一二三四五六七八九])\\s*号?");
+        Matcher matcher = pattern.matcher(reasoning);
+        while (matcher.find()) {
+            Integer seat = toSeat(matcher.group(1));
+            if (seat != null && validTargets.contains(seat)) {
+                return seat;
+            }
+        }
+        return null;
+    }
+
+    private Integer toSeat(String token) {
+        if (token == null || token.isEmpty()) {
+            return null;
+        }
+        char c = token.charAt(0);
+        if (c >= '1' && c <= '9') {
+            return c - '0';
+        }
+        int idx = "一二三四五六七八九".indexOf(c);
+        return idx >= 0 ? idx + 1 : null;
     }
 
     private boolean targetInvalid(AgentAction action) {
