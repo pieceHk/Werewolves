@@ -1,0 +1,26 @@
+werewolf:
+  preset: STANDARD_9
+  seed: 0
+  rounds-cap: 20
+  output-dir: ./matches
+  rules:
+    win-condition: KILL_SIDE
+    witch-self-save: FIRST_NIGHT_ONLY
+    witch-both-potions-same-night: false
+    hunter-shoot-when-poisoned: false
+    hunter-shoot-when-voted: true
+    allow-first-night-last-words: true
+    vote-tie: REVOTE_THEN_NONE
+    max-speech-chars: 100
+  human:
+    enabled: false
+    seat: null
+
+qwen:
+  base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+  model: qwen3-max
+  temperature: 0.8
+  timeout-connect-ms: 10000
+  timeout-read-ms: 60000
+  max-retries: 3
+  max-concurrency: 6

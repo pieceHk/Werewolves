@@ -1,0 +1,12 @@
+target/
+matches/
+.env
+*.log
+*.iml
+.idea/
+.vscode/
+.DS_Store
+application-local.yml
+*secret*
+*.key
+*-key.*
