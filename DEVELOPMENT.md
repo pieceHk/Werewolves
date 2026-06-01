@@ -100,3 +100,12 @@
 - `MockLLMClient` 不受影响（仍按"当前要求动作"识别并总是输出明确目标）。
 - 新增 `PromptBuilderTest` 回归用例，断言夜晚动作 prompt 携带 `targetSeat` 字段。执行 `mvn test`：19 个测试通过。
 - 同步在 `README.md` 补充"每动作 JSON 字段 schema"的说明。
+
+## M11 — 动作目标回填（prompt 之外的代码兜底）
+
+- 现象：M10 强化 prompt 后，真实 Qwen 首夜仍偶发"reasoning 写明刀/查目标、`targetSeat` 却为 null"，退化为非预期空刀/弃验（对局目录如 `matches/match-20260601-235913-ba2a91a2`、`matches/match-20260601-233414-2ec4df6c`）。
+- 根因：只靠 prompt 约束模型严格输出结构化字段并不可靠，prompt 只能降低概率、无法消除。
+- 方案：在 `ActionParser` 增加代码兜底——当 `WOLF_KILL`/`SEER_CHECK`/`HUNTER_SHOOT`/`VOTE` 目标为空时，按"动作动词 + 座位号"（刀/砍/杀、查/验、投/放逐、选/锁定/针对 等，后接阿拉伯或中文数字）从 reasoning 回填，并用合法目标集校验。
+- 防误判：仅在动作动词紧跟座位号时回填；"避免动 1、2、5、7 位"等无关座位不会被误当成目标；无动词锚定的真实空刀/弃验保持不变。
+- 回填时写入"目标字段缺失，已据思考回填座位X"告警，落入私有系统备注，便于审计。
+- 新增 3 个 `ActionParserTest` 用例（刀人回填、查验回填、避免误回填），并将 README 测试计数更新为 22。执行 `mvn test`：22 个测试通过。
