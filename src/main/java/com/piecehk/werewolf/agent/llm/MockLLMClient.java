@@ -52,6 +52,20 @@ public final class MockLLMClient implements LLMClient {
             int target = rotatingTarget(aliveSeats, selfSeat, id);
             return json("根据公开信息投出一票。", "{\"type\":\"VOTE\",\"targetSeat\":" + target + "}");
         }
+        if ("SHERIFF_RUN".equals(requiredAction)) {
+            return json("默认不上警，保留投票权。", "{\"type\":\"SHERIFF_RUN\",\"run\":false}");
+        }
+        if ("SHERIFF_VOTE".equals(requiredAction)) {
+            int target = firstTarget(aliveSeats, selfSeat, List.of());
+            return json("支持低号候选人。", "{\"type\":\"SHERIFF_VOTE\",\"targetSeat\":" + target + "}");
+        }
+        if ("SPEECH_ORDER".equals(requiredAction)) {
+            return json("选择警左起。", "{\"type\":\"SPEECH_ORDER\",\"order\":\"SHERIFF_LEFT\"}");
+        }
+        if ("BADGE_TRANSFER".equals(requiredAction)) {
+            int target = firstTarget(aliveSeats, selfSeat, List.of());
+            return json("警徽交给存活低号玩家。", "{\"type\":\"BADGE_TRANSFER\",\"targetSeat\":" + target + "}");
+        }
         if ("HUNTER_SHOOT".equals(requiredAction)) {
             return json("不开枪以免误伤。", "{\"type\":\"NOOP\"}");
         }

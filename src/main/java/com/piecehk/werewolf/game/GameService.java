@@ -33,6 +33,7 @@ public final class GameService {
         stateMachine.transition(game, GamePhase.GAME_OVER);
         game.addEvent(BasicGameEvent.publicEvent(EventType.GAME_OVER, game.roundNo(), GamePhase.GAME_OVER,
                 null, null, "游戏结束", "胜利阵营：" + winner));
+        scheduler.recordScoreboard(game, winner);
         return new MatchResult(game, journal, workspace, winner);
     }
 }

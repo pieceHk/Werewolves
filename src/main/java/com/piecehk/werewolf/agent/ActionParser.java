@@ -4,13 +4,18 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.piecehk.werewolf.agent.action.ActionType;
 import com.piecehk.werewolf.agent.action.AgentAction;
+import com.piecehk.werewolf.agent.action.BadgeTransferAction;
 import com.piecehk.werewolf.agent.action.HunterShootAction;
 import com.piecehk.werewolf.agent.action.NoOpAction;
 import com.piecehk.werewolf.agent.action.SeerCheckAction;
+import com.piecehk.werewolf.agent.action.SheriffRunAction;
+import com.piecehk.werewolf.agent.action.SheriffVoteAction;
 import com.piecehk.werewolf.agent.action.SpeakAction;
+import com.piecehk.werewolf.agent.action.SpeechOrderAction;
 import com.piecehk.werewolf.agent.action.VoteAction;
 import com.piecehk.werewolf.agent.action.WitchAction;
 import com.piecehk.werewolf.agent.action.WolfKillAction;
+import com.piecehk.werewolf.core.model.SpeechOrder;
 
 import java.util.Set;
 
@@ -40,7 +45,7 @@ public final class ActionParser {
                 if (!speech.equals(truncated)) {
                     warning = "发言超长已截断";
                 }
-                yield new SpeakAction(truncated);
+                yield new SpeakAction(truncated, actionNode.path("withdraw").asBoolean(false));
             }
             case VOTE -> new VoteAction(validTarget(actionNode.get("targetSeat"), validTargets));
             case WOLF_KILL -> new WolfKillAction(validTarget(actionNode.get("targetSeat"), validTargets));
@@ -48,6 +53,10 @@ public final class ActionParser {
             case WITCH -> new WitchAction(actionNode.path("useAntidote").asBoolean(false),
                     validTarget(actionNode.get("poisonSeat"), validTargets));
             case HUNTER_SHOOT -> new HunterShootAction(validTarget(actionNode.get("targetSeat"), validTargets));
+            case SHERIFF_RUN -> new SheriffRunAction(actionNode.path("run").asBoolean(false));
+            case SHERIFF_VOTE -> new SheriffVoteAction(validTarget(actionNode.get("targetSeat"), validTargets));
+            case SPEECH_ORDER -> new SpeechOrderAction(parseSpeechOrder(actionNode.path("order").asText(""), SpeechOrder.SHERIFF_LEFT));
+            case BADGE_TRANSFER -> new BadgeTransferAction(validTarget(actionNode.get("targetSeat"), validTargets));
             case NOOP -> new NoOpAction();
         };
         if (requiresTarget(type) && targetInvalid(action)) {
@@ -82,6 +91,10 @@ public final class ActionParser {
             case WOLF_KILL -> new WolfKillAction(null);
             case SEER_CHECK -> new SeerCheckAction(null);
             case WITCH -> new WitchAction(false, null);
+            case SHERIFF_RUN -> new SheriffRunAction(false);
+            case SHERIFF_VOTE -> new SheriffVoteAction(null);
+            case SPEECH_ORDER -> new SpeechOrderAction(SpeechOrder.SHERIFF_LEFT);
+            case BADGE_TRANSFER -> new BadgeTransferAction(null);
             case HUNTER_SHOOT, NOOP -> new NoOpAction();
         };
     }
@@ -89,6 +102,14 @@ public final class ActionParser {
     private ActionType parseType(String value, ActionType fallback) {
         try {
             return ActionType.valueOf(value);
+        } catch (IllegalArgumentException e) {
+            return fallback;
+        }
+    }
+
+    private SpeechOrder parseSpeechOrder(String value, SpeechOrder fallback) {
+        try {
+            return SpeechOrder.valueOf(value);
         } catch (IllegalArgumentException e) {
             return fallback;
         }

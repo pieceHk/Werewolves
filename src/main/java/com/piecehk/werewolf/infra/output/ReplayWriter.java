@@ -26,7 +26,9 @@ public final class ReplayWriter {
                 "seat", player.seatNo(),
                 "role", player.role().name()
         )).toList());
+        replay.put("sheriffSeat", game.sheriffSeat());
         replay.put("events", game.eventLog());
+        replay.put("scoreboardByRound", game.scoreboards());
         replay.put("winner", winner == null ? null : winner.name());
         replay.put("totalRounds", game.roundNo());
         replay.put("agentTrace", game.players().stream().map(player -> Map.of(
@@ -44,6 +46,8 @@ public final class ReplayWriter {
         meta.put("winner", winner == null ? null : winner.name());
         meta.put("phase", game.phase().name());
         meta.put("totalRounds", game.roundNo());
+        meta.put("sheriffSeat", game.sheriffSeat());
+        meta.put("scoreboardByRound", game.scoreboards());
         meta.put("seating", game.players().stream().map(Player::role).map(Enum::name).toList());
         objectMapper.writeValue(workspace.meta().toFile(), meta);
     }

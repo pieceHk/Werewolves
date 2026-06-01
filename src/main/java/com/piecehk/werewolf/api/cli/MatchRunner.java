@@ -6,6 +6,7 @@ import com.piecehk.werewolf.agent.llm.QwenLLMClient;
 import com.piecehk.werewolf.game.MatchManager;
 import com.piecehk.werewolf.game.MatchResult;
 import com.piecehk.werewolf.infra.output.MatchSnapshotWriter;
+import com.piecehk.werewolf.infra.output.GameReviewService;
 
 import java.nio.file.Path;
 import java.time.Duration;
@@ -31,6 +32,7 @@ public final class MatchRunner {
 
         MatchResult result = new MatchManager().runSingleMatch(seed, roundsCap, out, client);
         new MatchSnapshotWriter().write(result.game(), result.journal(), result.workspace(), result.winner());
+        new GameReviewService().review(result.game(), result.journal(), result.workspace(), result.winner(), client);
 
         System.out.println("matchId=" + result.game().matchId());
         System.out.println("winner=" + result.winner());

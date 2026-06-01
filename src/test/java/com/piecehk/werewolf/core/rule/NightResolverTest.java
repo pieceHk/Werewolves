@@ -9,53 +9,40 @@ import com.piecehk.werewolf.core.model.RuleConfig;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class NightResolverTest {
     private final NightResolver resolver = new NightResolver();
 
     @Test
-    void poisonKillsEvenWhenWolfTargetIsSaved() {
-        RuleConfig config = new RuleConfig(
-                RuleConfig.defaults().winCondition(),
-                RuleConfig.defaults().witchSelfSave(),
-                true,
-                RuleConfig.defaults().hunterShootWhenPoisoned(),
-                RuleConfig.defaults().hunterShootWhenVoted(),
-                RuleConfig.defaults().allowFirstNightLastWords(),
-                RuleConfig.defaults().voteTie(),
-                RuleConfig.defaults().maxSpeechChars()
-        );
-        Game game = GameFactory.fixed("night-test", config,
+    void poisonKillsNormally() {
+        Game game = GameFactory.fixed("night-test", RuleConfig.defaults(),
                 RoleType.WEREWOLF, RoleType.WEREWOLF, RoleType.WEREWOLF,
                 RoleType.VILLAGER, RoleType.SEER, RoleType.VILLAGER,
                 RoleType.HUNTER, RoleType.WITCH, RoleType.VILLAGER);
 
-        NightOutcome outcome = resolver.resolve(game, new NightActions(4, 5, true, 6));
+        NightOutcome outcome = resolver.resolve(game, new NightActions(4, 5, false, 6));
 
         assertThat(outcome.deaths()).containsEntry(6, DeathCause.WITCH_POISON);
-        assertThat(outcome.deaths()).doesNotContainKey(4);
+        assertThat(outcome.deaths()).containsEntry(4, DeathCause.WOLF_KILL);
     }
 
     @Test
-    void rejectsBothPotionsByDefault() {
+    void ignoresPoisonWhenBothPotionsAreSubmitted() {
         Game game = sampleGame();
+        NightOutcome outcome = resolver.resolve(game, new NightActions(4, 5, true, 6));
 
-        assertThatThrownBy(() -> resolver.resolve(game, new NightActions(4, 5, true, 6)))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("both potions");
+        assertThat(outcome.saved()).isTrue();
+        assertThat(outcome.poisonTarget()).isNull();
+        assertThat(outcome.deaths()).isEmpty();
     }
 
     @Test
-    void firstNightSelfSaveIsAllowedButSecondNightIsRejected() {
-        Game firstNight = sampleGame();
-        assertThat(resolver.resolve(firstNight, new NightActions(8, 5, true, null)).deaths()).isEmpty();
+    void witchCannotSelfSaveEvenOnFirstNight() {
+        Game game = sampleGame();
+        NightOutcome outcome = resolver.resolve(game, new NightActions(8, 5, true, null));
 
-        Game secondNight = sampleGame();
-        secondNight.nextRound();
-        assertThatThrownBy(() -> resolver.resolve(secondNight, new NightActions(8, 5, true, null)))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("self save");
+        assertThat(outcome.saved()).isFalse();
+        assertThat(outcome.deaths()).containsEntry(8, DeathCause.WOLF_KILL);
     }
 
     private Game sampleGame() {

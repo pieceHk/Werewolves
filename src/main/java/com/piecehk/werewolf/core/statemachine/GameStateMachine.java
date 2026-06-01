@@ -29,7 +29,8 @@ public final class GameStateMachine {
         }
         return switch (current) {
             case PREPARING -> target == GamePhase.NIGHT;
-            case NIGHT -> target == GamePhase.DAY_ANNOUNCE;
+            case NIGHT -> target == GamePhase.DAY_ANNOUNCE || target == GamePhase.DAY_SHERIFF_ELECTION;
+            case DAY_SHERIFF_ELECTION -> target == GamePhase.DAY_ANNOUNCE;
             case DAY_ANNOUNCE -> target == GamePhase.DAY_DISCUSS;
             case DAY_DISCUSS -> target == GamePhase.DAY_VOTE;
             case DAY_VOTE -> target == GamePhase.NIGHT;

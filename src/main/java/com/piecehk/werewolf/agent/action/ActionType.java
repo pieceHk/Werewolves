@@ -7,5 +7,9 @@ public enum ActionType {
     SEER_CHECK,
     WITCH,
     HUNTER_SHOOT,
+    SHERIFF_RUN,
+    SHERIFF_VOTE,
+    SPEECH_ORDER,
+    BADGE_TRANSFER,
     NOOP
 }

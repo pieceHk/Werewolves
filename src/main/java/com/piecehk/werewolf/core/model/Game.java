@@ -1,6 +1,7 @@
 package com.piecehk.werewolf.core.model;
 
 import com.piecehk.werewolf.core.event.GameEvent;
+import com.piecehk.werewolf.core.score.ScoreboardRound;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -17,9 +18,11 @@ public final class Game {
     private final RuleConfig ruleConfig;
     private final WitchState witchState;
     private final List<GameEvent> eventLog = new ArrayList<>();
+    private final List<ScoreboardRound> scoreboards = new ArrayList<>();
     private final long randomSeed;
     private final Random random;
     private Consumer<Game> eventListener;
+    private Integer sheriffSeat;
 
     public Game(String matchId, List<Player> players, RuleConfig ruleConfig, long randomSeed) {
         this.matchId = matchId;
@@ -102,5 +105,21 @@ public final class Game {
 
     public void onEvent(Consumer<Game> eventListener) {
         this.eventListener = eventListener;
+    }
+
+    public void addScoreboard(ScoreboardRound scoreboard) {
+        scoreboards.add(scoreboard);
+    }
+
+    public List<ScoreboardRound> scoreboards() {
+        return List.copyOf(scoreboards);
+    }
+
+    public Integer sheriffSeat() {
+        return sheriffSeat;
+    }
+
+    public void setSheriffSeat(Integer sheriffSeat) {
+        this.sheriffSeat = sheriffSeat;
     }
 }

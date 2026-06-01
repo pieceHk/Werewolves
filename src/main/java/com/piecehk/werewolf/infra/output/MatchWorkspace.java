@@ -12,7 +12,9 @@ public record MatchWorkspace(
         Path agentsDir,
         Path humanView,
         Path replay,
-        Path meta
+        Path meta,
+        Path reviewMd,
+        Path reviewJson
 ) {
     public static MatchWorkspace create(Path outputDir, String matchId) throws IOException {
         String timestamp = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").format(LocalDateTime.now());
@@ -23,6 +25,7 @@ public record MatchWorkspace(
         Path humanView = root.resolve("human-view.md");
         Files.writeString(humanView, "# human-view\n\nv1 预留，当前无真人玩家。\n");
         return new MatchWorkspace(root, root.resolve("god-view.md"), agents,
-                humanView, root.resolve("replay.json"), root.resolve("meta.json"));
+                humanView, root.resolve("replay.json"), root.resolve("meta.json"),
+                root.resolve("review.md"), root.resolve("review.json"));
     }
 }

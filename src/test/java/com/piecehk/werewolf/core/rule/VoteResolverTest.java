@@ -28,4 +28,13 @@ class VoteResolverTest {
         assertThat(second.requiresRevote()).isFalse();
         assertThat(second.exiledSeat()).isNull();
     }
+
+    @Test
+    void sheriffVoteWeightCanBreakTie() {
+        VoteOutcome outcome = resolver.resolve(Map.of(1, 3, 2, 4), RuleConfig.defaults(), false, 1);
+
+        assertThat(outcome.exiledSeat()).isEqualTo(3);
+        assertThat(outcome.counts().get(3)).isEqualTo(1.5);
+        assertThat(outcome.counts().get(4)).isEqualTo(1.0);
+    }
 }

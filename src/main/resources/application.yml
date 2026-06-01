@@ -5,12 +5,12 @@ werewolf:
   output-dir: ./matches
   rules:
     win-condition: KILL_SIDE
-    witch-self-save: FIRST_NIGHT_ONLY
-    witch-both-potions-same-night: false
     hunter-shoot-when-poisoned: false
     hunter-shoot-when-voted: true
     allow-first-night-last-words: true
     vote-tie: REVOTE_THEN_NONE
+    sheriff-enabled: true
+    sheriff-vote-weight: 1.5
     max-speech-chars: 100
   human:
     enabled: false

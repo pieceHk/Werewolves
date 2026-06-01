@@ -71,3 +71,16 @@
 - 执行 `mvn test`，共 15 个测试通过。
 - 执行 `mvn clean package`，成功重新生成 `target/multiagent-werewolf.jar`。
 - 使用 mock LLM 再次执行整局，对局目录 `matches/match-20260601-194655-13dc069c` 成功生成，未发现“非法目标”“解析失败”等异常降级记录。
+
+## M8 — 规则补丁 PATCH-01 / PATCH-02
+
+- 按 PATCH-02 优先级将女巫规则写死为代码常量：不能自救、不能同晚双药；移除 `application.yml` 中旧的女巫可配置项。
+- `PromptBuilder` 为所有角色固定前置公共规则简介和角色简化规则；女巫 prompt 明确写入“不能自救”“不能同晚双药”“解药只救当晚被刀者，毒药无视解药”。
+- 夜晚流程支持显式不执行技能：狼人可空刀、预言家可不查验、女巫可不用药，并在 god-view 私有块中按“① 狼人 / ② 预言家 / ③ 女巫”记录。
+- 新增 `DAY_SHERIFF_ELECTION` 相位，第 1 天按“首夜行动 → 警长竞选 → 公布首夜死讯 → 发言 → 投票”推进。
+- 实现警长竞选基础流程：上警、警上发言退水、警下投票、PK 重投、无人当选/警徽流失、警徽移交或撕毁。
+- `VoteResolver` 支持警长 1.5 票权，按最高非整数分唯一性判断出局或平票。
+- 每轮投票后生成玩家表现分表，写入 `god-view.md`；结构化分数同步写入 `meta.json.scoreboardByRound` 和 `replay.json`。
+- 对局结束后生成 `review.md` 与 `review.json`；Qwen 返回不可解析 JSON 时生成规则侧兜底复盘。
+- 新增/更新测试：女巫硬规则、警长票权、角色 prompt 规则前置。执行 `mvn test`：18 个测试通过。
+- 执行 `mvn clean package` 并使用 mock LLM 跑通整局，对局目录 `matches/match-20260601-204002-483205ad` 包含 `god-view.md`、`meta.json`、`replay.json`、`review.md`、`review.json` 和各座位私有日志。

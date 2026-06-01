@@ -11,13 +11,15 @@ import com.piecehk.werewolf.core.model.GamePhase;
 import com.piecehk.werewolf.core.model.NightActions;
 import com.piecehk.werewolf.core.model.Player;
 import com.piecehk.werewolf.core.model.RoleType;
-import com.piecehk.werewolf.core.model.WitchSelfSaveRule;
+import com.piecehk.werewolf.core.rule.WitchRules;
 import com.piecehk.werewolf.core.rule.NightOutcome;
 import com.piecehk.werewolf.core.rule.NightResolver;
 import com.piecehk.werewolf.core.rule.VoteOutcome;
 import com.piecehk.werewolf.core.rule.VoteResolver;
 import com.piecehk.werewolf.core.rule.WinChecker;
 import com.piecehk.werewolf.core.statemachine.GameStateMachine;
+import com.piecehk.werewolf.core.score.ScoreService;
+import com.piecehk.werewolf.core.score.ScoreboardRound;
 
 import java.util.List;
 import java.util.Map;
@@ -31,6 +33,7 @@ public final class PhaseScheduler {
     private final NightResolver nightResolver;
     private final VoteResolver voteResolver;
     private final WinChecker winChecker;
+    private final ScoreService scoreService = new ScoreService();
 
     public PhaseScheduler(AgentOrchestrator orchestrator, GameStateMachine stateMachine,
                           NightResolver nightResolver, VoteResolver voteResolver, WinChecker winChecker) {
@@ -58,28 +61,37 @@ public final class PhaseScheduler {
             return winner;
         }
 
+        if (game.roundNo() == 1 && game.ruleConfig().sheriffEnabled()) {
+            stateMachine.transition(game, GamePhase.DAY_SHERIFF_ELECTION);
+            orchestrator.runSheriffElection(game);
+        }
+
         stateMachine.transition(game, GamePhase.DAY_ANNOUNCE);
         List<Integer> deaths = nightOutcome.deaths().keySet().stream().toList();
         game.addEvent(BasicGameEvent.publicEvent(EventType.PLAYER_DIED, game.roundNo(), GamePhase.DAY_ANNOUNCE,
                 null, null, "夜晚死亡", deaths.isEmpty() ? "昨夜平安夜，无人死亡" : "昨夜死亡：" + deaths));
-        orchestrator.collectLastWords(game, deaths);
+        if (game.roundNo() == 1 && game.ruleConfig().allowFirstNightLastWords()) {
+            orchestrator.collectLastWords(game, deaths);
+        } else {
+            destroySheriffBadgeOnSilentDeath(game, deaths);
+        }
         winner = winChecker.check(game);
         if (winner.isPresent()) {
             return winner;
         }
 
         stateMachine.transition(game, GamePhase.DAY_DISCUSS);
-        orchestrator.collectDiscussion(game);
+        orchestrator.collectDiscussion(game, deaths);
 
         stateMachine.transition(game, GamePhase.DAY_VOTE);
         Map<Integer, Integer> votes = orchestrator.collectVotes(game);
-        VoteOutcome voteOutcome = voteResolver.resolve(votes, game.ruleConfig(), false);
+        VoteOutcome voteOutcome = voteResolver.resolve(votes, game.ruleConfig(), false, game.sheriffSeat());
         if (voteOutcome.requiresRevote()) {
             Set<Integer> tied = Set.copyOf(voteOutcome.tiedSeats());
             Map<Integer, Integer> revoteVotes = votes.entrySet().stream()
                     .filter(entry -> tied.contains(entry.getValue()))
                     .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-            voteOutcome = voteResolver.resolve(revoteVotes, game.ruleConfig(), true);
+            voteOutcome = voteResolver.resolve(revoteVotes, game.ruleConfig(), true, game.sheriffSeat());
         }
         if (voteOutcome.exiledSeat() != null) {
             Player exiled = game.requirePlayer(voteOutcome.exiledSeat());
@@ -91,7 +103,25 @@ public final class PhaseScheduler {
             game.addEvent(BasicGameEvent.publicEvent(EventType.PLAYER_EXILED, game.roundNo(), GamePhase.DAY_VOTE,
                     null, null, "放逐", "本轮无人出局"));
         }
+        recordScoreboard(game, null);
         return winChecker.check(game);
+    }
+
+    public void recordScoreboard(Game game, Camp winner) {
+        ScoreboardRound scoreboard = scoreService.calculate(game, winner);
+        game.addScoreboard(scoreboard);
+        game.addEvent(BasicGameEvent.publicEvent(EventType.SYSTEM_NOTE, game.roundNo(), game.phase(),
+                null, null, "玩家表现分", scoreService.formatTable(scoreboard)));
+    }
+
+    private void destroySheriffBadgeOnSilentDeath(Game game, List<Integer> deaths) {
+        if (game.sheriffSeat() != null && deaths.contains(game.sheriffSeat())) {
+            Integer oldSheriff = game.sheriffSeat();
+            game.setSheriffSeat(null);
+            game.addEvent(BasicGameEvent.publicEvent(EventType.BADGE_TRANSFERRED, game.roundNo(), game.phase(),
+                    oldSheriff, game.requirePlayer(oldSheriff).role(), "警徽处理",
+                    "警长夜晚出局且无遗言，警徽默认撕毁"));
+        }
     }
 
     private void recordPrivateNightEvents(Game game, NightActions actions) {
@@ -101,17 +131,19 @@ public final class PhaseScheduler {
                 CheckResult result = game.requirePlayer(actions.seerTarget()).role() == RoleType.WEREWOLF
                         ? CheckResult.WEREWOLF : CheckResult.GOOD;
                 game.addEvent(BasicGameEvent.privateEvent(EventType.SEER_CHECKED, Set.of(seer.seatNo()),
-                        game.roundNo(), GamePhase.NIGHT, seer.seatNo(), seer.role(), "预言家查验",
+                        game.roundNo(), GamePhase.NIGHT, seer.seatNo(), seer.role(), "② 预言家",
                         "查验座位" + actions.seerTarget() + " → " + result));
             }
         }
         Player witch = game.playersByRole(RoleType.WITCH).stream().findFirst().orElse(null);
         if (witch != null) {
             game.addEvent(BasicGameEvent.privateEvent(EventType.WITCH_ACTED, Set.of(witch.seatNo()),
-                    game.roundNo(), GamePhase.NIGHT, witch.seatNo(), witch.role(), "女巫行动",
-                    "今晚被刀：" + actions.wolfTarget()
-                            + "；解药=" + actions.witchSave()
-                            + "；毒药目标=" + actions.witchPoison()));
+                    game.roundNo(), GamePhase.NIGHT, witch.seatNo(), witch.role(), "③ 女巫",
+                    "被刀：座位" + actions.wolfTarget()
+                            + " | 解药：" + (actions.witchSave() ? "使用(救" + actions.wolfTarget() + ")" : "未使用")
+                            + " | 毒药：" + (actions.witchPoison() == null ? "未使用" : "使用(毒" + actions.witchPoison() + ")")
+                            + " | 剩余：解药" + (actions.witchSave() ? 0 : (game.witchState().antidoteAvailable() ? 1 : 0))
+                            + " 毒药" + (actions.witchPoison() == null ? (game.witchState().poisonAvailable() ? 1 : 0) : 0)));
         }
     }
 
@@ -143,12 +175,12 @@ public final class PhaseScheduler {
             witchSystemNote(game, "女巫毒药已不可用，已忽略毒药");
             witchPoison = null;
         }
-        if (witchSave && witchPoison != null && !game.ruleConfig().witchBothPotionsSameNight()) {
-            witchSystemNote(game, "女巫同晚不能同时使用解药和毒药，已保留解药并忽略毒药");
+        if (witchSave && witchPoison != null && !WitchRules.WITCH_BOTH_POTIONS_SAME_NIGHT) {
+            witchSystemNote(game, "女巫不可同晚双药，已保留解药并忽略毒药");
             witchPoison = null;
         }
         if (witchSave && wolfTarget != null && isForbiddenWitchSelfSave(game, wolfTarget)) {
-            witchSystemNote(game, "女巫本轮不能自救，已忽略解药");
+            witchSystemNote(game, "女巫不可自救，解药无效");
             witchSave = false;
         }
         return new NightActions(wolfTarget, seerTarget, witchSave, witchPoison);
@@ -163,9 +195,7 @@ public final class PhaseScheduler {
         if (witch == null || witch.seatNo() != wolfTarget) {
             return false;
         }
-        WitchSelfSaveRule rule = game.ruleConfig().witchSelfSave();
-        return rule != WitchSelfSaveRule.ALWAYS
-                && (rule != WitchSelfSaveRule.FIRST_NIGHT_ONLY || game.roundNo() != 1);
+        return !WitchRules.WITCH_CAN_SELF_SAVE;
     }
 
     private void seerSystemNote(Game game, String text) {

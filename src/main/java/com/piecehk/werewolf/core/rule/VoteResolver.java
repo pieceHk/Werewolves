@@ -2,22 +2,33 @@ package com.piecehk.werewolf.core.rule;
 
 import com.piecehk.werewolf.core.model.RuleConfig;
 
-import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 public final class VoteResolver {
     public VoteOutcome resolve(Map<Integer, Integer> votes, RuleConfig ruleConfig, boolean revote) {
-        Map<Integer, Long> counts = votes.values().stream()
-                .filter(target -> target != null)
-                .collect(Collectors.groupingBy(target -> target, Collectors.counting()));
+        return resolve(votes, ruleConfig, revote, null);
+    }
+
+    public VoteOutcome resolve(Map<Integer, Integer> votes, RuleConfig ruleConfig, boolean revote, Integer sheriffSeat) {
+        Map<Integer, Double> counts = new HashMap<>();
+        for (Map.Entry<Integer, Integer> vote : votes.entrySet()) {
+            Integer target = vote.getValue();
+            if (target == null) {
+                continue;
+            }
+            double weight = sheriffSeat != null && sheriffSeat.equals(vote.getKey())
+                    ? ruleConfig.sheriffVoteWeight()
+                    : 1.0;
+            counts.merge(target, weight, Double::sum);
+        }
         if (counts.isEmpty()) {
             return new VoteOutcome(counts, List.of(), null, false);
         }
-        long max = counts.values().stream().max(Comparator.naturalOrder()).orElse(0L);
+        double max = counts.values().stream().max(Double::compareTo).orElse(0.0);
         List<Integer> tied = counts.entrySet().stream()
-                .filter(entry -> entry.getValue() == max)
+                .filter(entry -> Double.compare(entry.getValue(), max) == 0)
                 .map(Map.Entry::getKey)
                 .sorted()
                 .toList();

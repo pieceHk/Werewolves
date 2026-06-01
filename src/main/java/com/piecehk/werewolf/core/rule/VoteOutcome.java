@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 public record VoteOutcome(
-        Map<Integer, Long> counts,
+        Map<Integer, Double> counts,
         List<Integer> tiedSeats,
         Integer exiledSeat,
         boolean requiresRevote
