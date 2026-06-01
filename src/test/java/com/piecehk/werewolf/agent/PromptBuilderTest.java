@@ -26,6 +26,28 @@ class PromptBuilderTest {
     }
 
     @Test
+    void nightActionPromptsDocumentTargetSeatField() {
+        Game game = GameFactory.fixed("prompt-test", RuleConfig.defaults(),
+                RoleType.WEREWOLF, RoleType.WEREWOLF, RoleType.WEREWOLF,
+                RoleType.VILLAGER, RoleType.SEER, RoleType.VILLAGER,
+                RoleType.HUNTER, RoleType.WITCH, RoleType.VILLAGER);
+        PromptBuilder builder = new PromptBuilder();
+        ContextBuilder contextBuilder = new ContextBuilder();
+
+        // 狼人首夜击杀：必须告知 targetSeat 字段，且示例 JSON 含 targetSeat
+        AgentContext wolf = contextBuilder.build(game, game.requirePlayer(1), null, "");
+        String wolfSystem = builder.build(wolf, ActionType.WOLF_KILL, 100).get(0).content();
+        String wolfUser = builder.build(wolf, ActionType.WOLF_KILL, 100).get(1).content();
+        assertThat(wolfSystem).contains("\"targetSeat\"");
+        assertThat(wolfUser).contains("targetSeat");
+
+        // 预言家查验：同样必须给出 targetSeat 字段
+        AgentContext seer = contextBuilder.build(game, game.requirePlayer(5), null, "");
+        String seerSystem = builder.build(seer, ActionType.SEER_CHECK, 100).get(0).content();
+        assertThat(seerSystem).contains("\"targetSeat\"");
+    }
+
+    @Test
     void everyRolePromptStartsWithRuleBriefing() {
         Game game = GameFactory.fixed("prompt-test", RuleConfig.defaults(),
                 RoleType.WEREWOLF, RoleType.VILLAGER, RoleType.SEER,
