@@ -32,7 +32,25 @@ public final class PromptBuilder {
     private String systemPrompt(AgentContext context, ActionType requiredAction, int maxSpeechChars) {
         return roleSystemPrompt(context, maxSpeechChars)
                 + "\n当前要求动作：" + requiredAction
-                + "\nJSON 格式：{\"reasoning\":\"仅写入私人记忆\",\"action\":{\"type\":\"" + requiredAction + "\"}}";
+                + "\nJSON 格式：" + jsonSchemaHint(requiredAction)
+                + "\n注意：action 内除 type 外的字段必须按上面给出的键名原样填写，targetSeat/poisonSeat 必须是数字座位号或 null，不能把座位号只写在 reasoning 里。";
+    }
+
+    private String jsonSchemaHint(ActionType requiredAction) {
+        String actionFields = switch (requiredAction) {
+            case SPEAK -> "\"type\":\"SPEAK\",\"speech\":\"你的发言\",\"withdraw\":false";
+            case VOTE -> "\"type\":\"VOTE\",\"targetSeat\":要投出的座位号，弃票填 null";
+            case WOLF_KILL -> "\"type\":\"WOLF_KILL\",\"targetSeat\":要击杀的座位号，空刀填 null";
+            case SEER_CHECK -> "\"type\":\"SEER_CHECK\",\"targetSeat\":要查验的座位号，不查验填 null";
+            case WITCH -> "\"type\":\"WITCH\",\"useAntidote\":true 或 false,\"poisonSeat\":要毒的座位号，不毒填 null";
+            case HUNTER_SHOOT -> "\"type\":\"HUNTER_SHOOT\",\"targetSeat\":开枪带走的座位号，不开枪填 null";
+            case SHERIFF_RUN -> "\"type\":\"SHERIFF_RUN\",\"run\":true 或 false";
+            case SHERIFF_VOTE -> "\"type\":\"SHERIFF_VOTE\",\"targetSeat\":支持的座位号，弃票填 null";
+            case SPEECH_ORDER -> "\"type\":\"SPEECH_ORDER\",\"order\":\"SHERIFF_LEFT/SHERIFF_RIGHT/DEAD_LEFT/DEAD_RIGHT 之一\"";
+            case BADGE_TRANSFER -> "\"type\":\"BADGE_TRANSFER\",\"targetSeat\":移交对象座位号，撕毁填 null";
+            case NOOP -> "\"type\":\"NOOP\"";
+        };
+        return "{\"reasoning\":\"仅写入私人记忆\",\"action\":{" + actionFields + "}}";
     }
 
     private String userPrompt(AgentContext context, ActionType requiredAction, int maxSpeechChars) {
@@ -101,6 +119,11 @@ public final class PromptBuilder {
 
     private String taskRule(ActionType requiredAction) {
         return switch (requiredAction) {
+            case WOLF_KILL -> "现在是夜晚狼人行动。请把本夜要击杀的目标座位号写入 action.targetSeat（必须是存活的非狼座位）；若确实决定空刀，才填 null。不要把击杀目标只写进 reasoning。";
+            case SEER_CHECK -> "现在是夜晚预言家行动。请把本夜要查验的目标座位号写入 action.targetSeat；只有在你刻意放弃查验时才填 null。不要把查验目标只写进 reasoning。";
+            case WITCH -> "现在是夜晚女巫行动。救人请把 useAntidote 设为 true（同晚 poisonSeat 必须为 null）；用毒请把 poisonSeat 设为目标座位号；都不用药则 useAntidote=false 且 poisonSeat=null。";
+            case HUNTER_SHOOT -> "你已出局且可以开枪。请把要带走的存活座位号写入 action.targetSeat；放弃开枪才填 null。";
+            case VOTE -> "现在是白天投票。请把要放逐的座位号写入 action.targetSeat；只有在你刻意弃票时才填 null。不要把投票目标只写进 reasoning。";
             case SHERIFF_RUN -> "现在是第1天警长竞选。action.type 为 SHERIFF_RUN，run 为 true 表示参选，false 表示不上警。";
             case SHERIFF_VOTE -> "你是警下玩家，请投票选出警长。action.type 为 SHERIFF_VOTE，targetSeat 为支持座位，弃票为 null。";
             case SPEECH_ORDER -> "你已当选警长，请指定发言顺序。action.type 为 SPEECH_ORDER，order 取 SHERIFF_LEFT/SHERIFF_RIGHT/DEAD_LEFT/DEAD_RIGHT。";

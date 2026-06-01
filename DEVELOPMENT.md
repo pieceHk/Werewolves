@@ -84,3 +84,19 @@
 - 对局结束后生成 `review.md` 与 `review.json`；Qwen 返回不可解析 JSON 时生成规则侧兜底复盘。
 - 新增/更新测试：女巫硬规则、警长票权、角色 prompt 规则前置。执行 `mvn test`：18 个测试通过。
 - 执行 `mvn clean package` 并使用 mock LLM 跑通整局，对局目录 `matches/match-20260601-204002-483205ad` 包含 `god-view.md`、`meta.json`、`replay.json`、`review.md`、`review.json` 和各座位私有日志。
+
+## M9 — README 重构升级
+
+- 仿照成熟开源项目排版重写 `README.md`：补充徽章、目录导航、emoji 分区的功能说明。
+- 新增命令行参数表、规则边界表、里程碑表，用 ASCII 流程图画出完整相位状态机。
+- 补充 `application.yml` 配置说明、三层架构概览、输出产物目录树与常见问题（FAQ）。
+- 明确"记忆在对局内跨轮保留、对局之间清空"的核心模型，并修正旧 README 遗漏或不准确的细节（`--rounds-cap`/`--llm` 参数、女巫硬规则、警长 1.5 票权、`review.md`/`review.json`、夜晚动作净化、`DASHSCOPE_API_KEY`）。
+
+## M10 — 夜晚动作目标丢失修复
+
+- 定位真实 Qwen 首夜"reasoning 写明目标、结构化字段 `targetSeat` 却为 null"的根因：`PromptBuilder` 给模型的 JSON 示例只含 `{"type":"WOLF_KILL"}`，从未告知 `targetSeat`/`poisonSeat`/`useAntidote` 等字段，`taskRule` 也仅对 `SHERIFF_VOTE`/`BADGE_TRANSFER` 说明目标字段，导致模型把座位号只写进 reasoning，动作退化为意外空刀/弃验。
+- 新增 `jsonSchemaHint`：按动作类型输出含真实字段的 JSON 示例；`systemPrompt` 明确要求字段按给定键名填写、座位号不得只写进 reasoning。
+- 扩充 `taskRule`：为 `WOLF_KILL`、`SEER_CHECK`、`WITCH`、`HUNTER_SHOOT`、`VOTE` 补充目标字段说明。
+- `MockLLMClient` 不受影响（仍按"当前要求动作"识别并总是输出明确目标）。
+- 新增 `PromptBuilderTest` 回归用例，断言夜晚动作 prompt 携带 `targetSeat` 字段。执行 `mvn test`：19 个测试通过。
+- 同步在 `README.md` 补充"每动作 JSON 字段 schema"的说明。
